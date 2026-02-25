@@ -1,26 +1,27 @@
 package com.layababateam.pushserver.service
 
-import com.layababateam.pushserver.repository.DeviceBindingRepository
+import com.layababateam.pushserver.dto.SendMessageRequest
 import com.layababateam.pushserver.repository.ServiceSubscriptionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 /**
- * 服务广播推送 — 向某个公共服务的所有订阅者发送 FCM 推送
+ * 服务广播推送 — 向某个公共服务的所有订阅者发送推送（入库 + FCM）
  */
 @Service
 class ServiceBroadcastService(
     private val subscriptionRepo: ServiceSubscriptionRepository,
-    private val deviceRepo: DeviceBindingRepository,
-    private val fcmPushService: FcmPushService
+    private val messageService: MessageService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     /**
      * 向指定服务的所有订阅者广播推送
      *
+     * 通过 MessageService.sendMessage() 发送，确保消息同时入库和推送 FCM。
+     *
      * @param serviceId   服务 ID
-     * @param serviceName 服务名（用于日志）
+     * @param serviceName 服务名（用于分组和扩展数据）
      * @param title       通知标题
      * @param body        通知正文
      * @return Pair(成功数, 总订阅者数)
@@ -41,23 +42,22 @@ class ServiceBroadcastService(
 
         var success = 0
         for (userId in subscriberIds) {
-            val devices = deviceRepo.findByUserId(userId)
-            for (device in devices) {
-                val pushToken = device.pushToken
-                if (pushToken.isNullOrBlank()) continue
-
-                val data = mapOf(
-                    "source" to "service",
-                    "serviceName" to serviceName
-                )
-
-                val ok = fcmPushService.sendPush(
-                    pushToken = pushToken,
+            try {
+                val req = SendMessageRequest(
+                    receiverId = userId,
                     title = title,
-                    body = body,
-                    data = data
+                    content = body,
+                    group = serviceName,
+                    msgType = "notification",
+                    extraData = mapOf(
+                        "source" to "service",
+                        "serviceName" to serviceName
+                    )
                 )
-                if (ok) success++
+                messageService.sendMessage(senderId = null, req = req)
+                success++
+            } catch (e: Exception) {
+                log.warn("服务[{}] 推送给用户 {} 失败: {}", serviceName, userId, e.message)
             }
         }
 
