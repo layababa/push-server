@@ -80,7 +80,7 @@ class MessageController(
     }
     
     // 清空当前用户所有消息
-    @DeleteMapping
+    @PostMapping("/clear")
     fun clearMessages(request: HttpServletRequest): ApiResult<Int> {
         val userId = request.getAttribute("userId") as? Long
             ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
