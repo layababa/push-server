@@ -44,7 +44,7 @@ class AuthService(
         // 2. 查找或自动注册用户
         val user = userRepo.findByPhone(req.phone).orElseGet {
             val newUser = User(
-                username = "user_${req.phone.takeLast(4)}",
+                username = generateUniqueUsername(req.phone),
                 password = "",  // OTP 登录不需要密码
                 phone = req.phone
             )
@@ -73,6 +73,20 @@ class AuthService(
     fun logout(userId: Long) {
         jwtService.invalidateToken(userId)
         log.info("User logout: id={}", userId)
+    }
+
+    /**
+     * 生成唯一用户名：user_0000, user_0000_1, user_0000_2, ...
+     * 防止手机尾号相同导致 username 唯一约束冲突
+     */
+    private fun generateUniqueUsername(phone: String): String {
+        val base = "user_${phone.takeLast(4)}"
+        if (!userRepo.existsByUsername(base)) return base
+        var counter = 1
+        while (userRepo.existsByUsername("${base}_$counter")) {
+            counter++
+        }
+        return "${base}_$counter"
     }
 
     /**

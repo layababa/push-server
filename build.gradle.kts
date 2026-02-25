@@ -50,6 +50,9 @@ dependencies {
     // jackson for jsonb
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     
+    // firebase admin sdk (FCM推送)
+    implementation("com.google.firebase:firebase-admin:9.4.3")
+    
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     
     testImplementation("org.springframework.boot:spring-boot-starter-test")

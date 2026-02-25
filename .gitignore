@@ -38,3 +38,15 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### OS ###
+.DS_Store
+
+### Firebase ###
+src/main/resources/firebase-service-account.json
+
+### Deploy secrets ###
+deploy/application-prod.yml
+
+### Deploy artifacts ###
+deploy/*.jar

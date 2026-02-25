@@ -5,6 +5,8 @@ import com.layababateam.pushserver.entity.DeviceBinding
 import com.layababateam.pushserver.entity.User
 import com.layababateam.pushserver.repository.DeviceBindingRepository
 import com.layababateam.pushserver.repository.UserRepository
+import com.layababateam.pushserver.service.AccountDeletionService
+import com.layababateam.pushserver.service.auth.JwtService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.*
@@ -18,7 +20,9 @@ import java.time.LocalDateTime
 @RequestMapping("/api/v1/user")
 class ProfileController(
     private val userRepo: UserRepository,
-    private val deviceRepo: DeviceBindingRepository
+    private val deviceRepo: DeviceBindingRepository,
+    private val accountDeletionService: AccountDeletionService,
+    private val jwtService: JwtService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -99,6 +103,25 @@ class ProfileController(
 
         log.info("User {} bound device: type={}, id={}", userId, req.deviceType, req.deviceId)
         return ApiResult.ok(msg = "设备绑定成功")
+    }
+
+    /**
+     * 注销账号
+     * POST /api/v1/user/account/delete
+     * 合规要求：个人信息保护法第47条
+     */
+    @PostMapping("/account/delete")
+    fun deleteAccount(@RequestAttribute("userId") userId: Long): ApiResult<Nothing> {
+        val deleted = accountDeletionService.deleteAccount(userId)
+        if (!deleted) {
+            return ApiResult.fail("用户不存在", ApiResult.CODE_NOT_FOUND)
+        }
+
+        // 使 JWT 失效
+        jwtService.invalidateToken(userId)
+
+        log.info("Account deleted via API: userId={}", userId)
+        return ApiResult.ok(msg = "账号已注销")
     }
 
     private fun maskPhone(phone: String): String {

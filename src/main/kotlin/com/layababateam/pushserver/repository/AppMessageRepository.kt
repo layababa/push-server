@@ -46,4 +46,9 @@ interface AppMessageRepository : JpaRepository<AppMessage, Long> {
     @Modifying
     @Query("UPDATE AppMessage m SET m.pushStatus = :status WHERE m.id = :id")
     fun updatePushStatus(@Param("id") id: Long, @Param("status") status: Int): Int
+
+    // 删除用户所有消息（账号注销用）
+    @Modifying
+    @Query("DELETE FROM AppMessage m WHERE m.receiverId = :userId")
+    fun deleteByReceiverId(@Param("userId") userId: Long): Int
 }

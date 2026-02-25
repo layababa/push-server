@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>服务大厅</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* === 列表页 === */
+        .page { display: block; }
+        .page.hidden { display: none; }
+
+        .list-page { padding: 16px; padding-bottom: 32px; }
+        .header { text-align: center; padding: 20px 0 16px; }
+        .header h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+        .header p { font-size: 13px; color: #999; margin-top: 4px; }
+
+        .service-list { display: flex; flex-direction: column; gap: 12px; }
+        .service-card {
+            background: #fff; border-radius: 12px; padding: 16px;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .service-card:active { transform: scale(0.98); }
+        .service-icon {
+            width: 48px; height: 48px; border-radius: 10px;
+            object-fit: cover; background: #f0f0f0; flex-shrink: 0;
+        }
+        .service-info { flex: 1; min-width: 0; }
+        .service-name { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+        .service-desc {
+            font-size: 12px; color: #999; line-height: 1.4;
+            overflow: hidden; text-overflow: ellipsis;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .arrow { color: #ccc; font-size: 18px; flex-shrink: 0; }
+
+        /* === 详情页 === */
+        .detail-page {
+            background: #fff; min-height: 100vh;
+        }
+        .detail-nav {
+            position: sticky; top: 0; background: #fff; z-index: 10;
+            display: flex; align-items: center; padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-back {
+            font-size: 22px; color: #333; cursor: pointer; padding: 4px 8px 4px 0;
+            background: none; border: none; line-height: 1;
+        }
+        .detail-nav-title { font-size: 16px; font-weight: 600; flex: 1; }
+
+        .detail-hero {
+            text-align: center; padding: 32px 24px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        .detail-hero-icon {
+            width: 72px; height: 72px; border-radius: 16px;
+            object-fit: cover; background: rgba(255,255,255,0.2);
+            border: 3px solid rgba(255,255,255,0.4);
+            margin: 0 auto 16px;
+        }
+        .detail-hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .detail-hero .service-code { font-size: 12px; opacity: 0.7; }
+
+        .detail-body { padding: 0 16px 32px; }
+
+        .detail-section {
+            padding: 20px 0; border-bottom: 1px solid #f5f5f5;
+        }
+        .detail-section:last-child { border-bottom: none; }
+        .detail-section-title {
+            font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .detail-section-title .icon { font-size: 16px; }
+        .detail-section p {
+            font-size: 13px; color: #666; line-height: 1.8;
+        }
+
+        .spec-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        .spec-item {
+            background: #f9f9f9; border-radius: 8px; padding: 12px;
+        }
+        .spec-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+        .spec-value { font-size: 14px; font-weight: 600; color: #333; }
+
+        .feature-list { list-style: none; }
+        .feature-list li {
+            font-size: 13px; color: #666; line-height: 1.6;
+            padding: 6px 0; padding-left: 20px; position: relative;
+        }
+        .feature-list li::before {
+            content: '✓'; position: absolute; left: 0;
+            color: #4F46E5; font-weight: 700;
+        }
+
+        .detail-btn-area {
+            padding: 16px; position: sticky; bottom: 0;
+            background: #fff; border-top: 1px solid #f0f0f0;
+        }
+        .btn-full {
+            width: 100%; padding: 14px; border-radius: 12px;
+            font-size: 16px; font-weight: 600; border: none; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-full-primary { background: #4F46E5; color: #fff; }
+        .btn-full-primary:active { background: #4338CA; }
+        .btn-full-secondary { background: #f5f5f5; color: #999; }
+        .btn-full-danger {
+            background: #fff; color: #e53e3e;
+            border: 1.5px solid #e53e3e;
+        }
+        .btn-full-danger:active { background: #fef2f2; }
+        .btn-full:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .loading { text-align: center; padding: 60px 0; color: #999; font-size: 14px; }
+        .error { text-align: center; padding: 60px 0; color: #e53e3e; font-size: 14px; }
+        .error button {
+            margin-top: 12px; padding: 8px 24px; background: #4F46E5;
+            color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;
+        }
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.75); color: #fff; padding: 10px 24px;
+            border-radius: 20px; font-size: 13px; z-index: 100;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- 列表页 -->
+    <div id="listPage" class="page list-page">
+        <div class="header">
+            <h1>服务大厅</h1>
+            <p>发现并订阅感兴趣的推送服务</p>
+        </div>
+        <div id="content">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 详情页 -->
+    <div id="detailPage" class="page hidden detail-page">
+        <div class="detail-nav">
+            <button class="detail-back" onclick="showList()">‹</button>
+            <div class="detail-nav-title">服务详情</div>
+        </div>
+        <div id="detailContent"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const BASE_URL = window.location.origin;
+
+        // 每个服务的专业详细信息
+        const SERVICE_DETAILS = {
+            'srv_aliyun_status': {
+                gradient: 'linear-gradient(135deg, #FF6B35 0%, #F7C948 100%)',
+                overview: '实时监控阿里云全球各可用区（华北、华东、华南、西南、香港、新加坡等）的服务健康状态。当检测到计算、存储、网络、数据库等核心服务出现异常或性能降级时，第一时间推送告警通知到您的设备。',
+                specs: [
+                    { label: '监控范围', value: '全球 28 个可用区' },
+                    { label: '检测频率', value: '每 30 秒' },
+                    { label: '平均延迟', value: '< 15 秒' },
+                    { label: '数据来源', value: '阿里云官方 API' }
+                ],
+                features: [
+                    'ECS、RDS、OSS、SLB 等 40+ 产品线覆盖',
+                    '区分「服务异常」与「性能降级」两级告警',
+                    '支持按可用区和产品线精准推送',
+                    '包含故障恢复通知，闭环跟踪',
+                    '历史事件回溯，辅助 SLA 统计'
+                ],
+                scenarios: '适用于将业务部署在阿里云上的运维工程师、SRE 团队和技术负责人。当阿里云基础设施出现问题时，帮助您在用户投诉之前获知故障，快速启动应急预案。'
+            },
+            'srv_weather_alerts': {
+                gradient: 'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)',
+                overview: '对接中国气象局及各省级气象台的官方预警信号数据源，覆盖暴雨、暴雪、台风、高温、寒潮、大雾、雷电等 14 类气象灾害预警。当您所在城市发布橙色或红色预警信号时，即时推送至您的设备。',
+                specs: [
+                    { label: '覆盖城市', value: '全国 340+ 地级市' },
+                    { label: '预警类型', value: '14 类气象灾害' },
+                    { label: '数据来源', value: '中国气象局' },
+                    { label: '推送延迟', value: '< 60 秒' }
+                ],
+                features: [
+                    '暴雨、台风、高温、寒潮等全类型覆盖',
+                    '仅推送橙色及以上高级别预警，避免打扰',
+                    '预警内容含防御指南和应急建议',
+                    '预警解除时同步推送解除通知',
+                    '支持基于 GPS 自动定位所在城市'
+                ],
+                scenarios: '适用于关注极端天气影响出行安排的普通用户，以及需要提前部署防灾措施的物流、农业、建筑等行业从业者。'
+            },
+            'srv_football_goals': {
+                gradient: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)',
+                overview: '覆盖英超、西甲、德甲、意甲、法甲五大联赛以及欧冠、欧联杯等顶级赛事。通过对接权威体育数据服务商的实时比赛事件流，在进球发生后数秒内将进球球员、比分变化和比赛信息推送至您的设备。',
+                specs: [
+                    { label: '覆盖赛事', value: '五大联赛 + 欧战' },
+                    { label: '赛季场次', value: '2000+ 场/赛季' },
+                    { label: '数据来源', value: 'Opta Sports' },
+                    { label: '推送延迟', value: '< 10 秒' }
+                ],
+                features: [
+                    '英超、西甲、德甲、意甲、法甲全覆盖',
+                    '欧冠、欧联杯淘汰赛阶段自动纳入',
+                    '推送内容含进球球员、助攻球员、实时比分',
+                    '支持红牌、点球、VAR 改判等关键事件',
+                    '赛前 15 分钟推送首发阵容提醒'
+                ],
+                scenarios: '适用于无法守在屏幕前看球但又不想错过精彩进球的球迷。无论是在通勤、开会还是健身，进球瞬间即刻获知。'
+            }
+        };
+
+        // 默认详情（兜底）
+        const DEFAULT_DETAIL = {
+            gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            overview: '此服务由平台官方运营团队维护，通过定时抓取外部权威数据源，在触发预设条件时向所有订阅用户批量推送通知。',
+            specs: [
+                { label: '运营方', value: '平台官方' },
+                { label: '推送频率', value: '事件触发' },
+                { label: '数据来源', value: '官方 API' },
+                { label: '推送延迟', value: '< 60 秒' }
+            ],
+            features: [
+                '由平台官方团队专业运营维护',
+                '7×24 小时不间断监控',
+                '智能去重，避免重复推送',
+                '支持订阅后即时生效，退订后立即停止'
+            ],
+            scenarios: '适用于希望第一时间获取关键事件通知的用户。'
+        };
+
+        let allServices = [];
+
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 2000);
+        }
+
+        async function apiRequest(method, path, body) {
+            const opts = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                }
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const resp = await fetch(BASE_URL + path, opts);
+            return resp.json();
+        }
+
+        function showList() {
+            document.getElementById('listPage').classList.remove('hidden');
+            document.getElementById('detailPage').classList.add('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showDetail(serviceId) {
+            const item = allServices.find(s => s.id === serviceId);
+            if (!item) return;
+
+            const detail = SERVICE_DETAILS[item.serviceCode] || DEFAULT_DETAIL;
+            const isSubscribed = item.isSubscribed;
+
+            let specsHtml = '';
+            detail.specs.forEach(s => {
+                specsHtml += `<div class="spec-item">
+                    <div class="spec-label">${s.label}</div>
+                    <div class="spec-value">${s.value}</div>
+                </div>`;
+            });
+
+            let featuresHtml = '';
+            detail.features.forEach(f => {
+                featuresHtml += `<li>${f}</li>`;
+            });
+
+            const btnHtml = isSubscribed
+                ? `<button class="btn-full btn-full-danger" id="detailBtn" onclick="detailToggle(${item.id})">取消订阅</button>`
+                : `<button class="btn-full btn-full-primary" id="detailBtn" onclick="detailToggle(${item.id})">立即订阅</button>`;
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-hero" style="background: ${detail.gradient}">
+                    <img class="detail-hero-icon" src="${item.iconUrl || ''}"
+                         onerror="this.style.background='rgba(255,255,255,0.3)'" alt="">
+                    <h2>${item.name}</h2>
+                    <div class="service-code">${item.serviceCode}</div>
+                </div>
+                <div class="detail-body">
+                    <div class="detail-section">
+                        <div class="detail-section-title"><span class="icon">📋</span> 服务概述</div>
+                        <p>${detail.overview}</p>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-section-title"><span class="icon">📊</span> 服务规格</div>
+                        <div class="spec-grid">${specsHtml}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-section-title"><span class="icon">⚡</span> 功能特性</div>
+                        <ul class="feature-list">${featuresHtml}</ul>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-section-title"><span class="icon">🎯</span> 适用场景</div>
+                        <p>${detail.scenarios}</p>
+                    </div>
+                </div>
+                <div class="detail-btn-area">${btnHtml}</div>
+            `;
+
+            document.getElementById('listPage').classList.add('hidden');
+            document.getElementById('detailPage').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        async function detailToggle(serviceId) {
+            const btn = document.getElementById('detailBtn');
+            if (!btn || btn.disabled) return;
+
+            const item = allServices.find(s => s.id === serviceId);
+            if (!item) return;
+
+            const isSubscribed = item.isSubscribed;
+            const endpoint = isSubscribed ? '/api/v1/services/unsubscribe' : '/api/v1/services/subscribe';
+
+            btn.disabled = true;
+            try {
+                const result = await apiRequest('POST', endpoint, { serviceId });
+                if (result.code === 0) {
+                    item.isSubscribed = !isSubscribed;
+                    showToast(item.isSubscribed ? '订阅成功' : '已取消订阅');
+                    // 刷新详情页按钮
+                    showDetail(serviceId);
+                    // 同步刷新列表页
+                    renderList();
+                } else {
+                    showToast(result.msg || '操作失败');
+                }
+            } catch (e) {
+                showToast('网络错误');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderList() {
+            if (!allServices || allServices.length === 0) {
+                document.getElementById('content').innerHTML = '<div class="loading">暂无可用服务</div>';
+                return;
+            }
+
+            let html = '<div class="service-list">';
+            allServices.forEach(item => {
+                const badge = item.isSubscribed
+                    ? '<span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 8px;border-radius:10px;margin-left:6px;">已订阅</span>'
+                    : '';
+                html += `
+                    <div class="service-card" onclick="showDetail(${item.id})">
+                        <img class="service-icon" src="${item.iconUrl || ''}"
+                             onerror="this.style.background='#e0e0e0'" alt="">
+                        <div class="service-info">
+                            <div class="service-name">${item.name}${badge}</div>
+                            <div class="service-desc">${item.description || ''}</div>
+                        </div>
+                        <span class="arrow">›</span>
+                    </div>`;
+            });
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        async function loadServices() {
+            const content = document.getElementById('content');
+            if (!token) {
+                content.innerHTML = '<div class="error">缺少认证信息，请从 App 内打开</div>';
+                return;
+            }
+
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            try {
+                const result = await apiRequest('GET', '/api/v1/services/list');
+                if (result.code !== 0) {
+                    content.innerHTML = '<div class="error">加载失败: ' + (result.msg || '未知错误') +
+                        '<br><button onclick="loadServices()">重试</button></div>';
+                    return;
+                }
+                allServices = result.data.items || [];
+                renderList();
+            } catch (e) {
+                content.innerHTML = '<div class="error">网络错误，请检查连接<br>' +
+                    '<button onclick="loadServices()">重试</button></div>';
+            }
+        }
+
+        loadServices();
+    </script>
+</body>
+</html>

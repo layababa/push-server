@@ -26,6 +26,8 @@ class SecurityConfig(
                         "/api/v1/auth/login",
                         // Webhook 推送用 pushKey 认证，不走 JWT
                         "/push/**",
+                        // H5 服务大厅静态页面
+                        "/service-hall.html",
                         // 保留旧接口暂时公开（后续 deprecated）
                         "/api/user/**"
                     ).permitAll()

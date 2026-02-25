@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: push-postgres
+    environment:
+      POSTGRES_DB: push_server
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pushapp_prod_2026
+    volumes:
+      - push_pgdata:/var/lib/postgresql/data
+    networks:
+      - push-net
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: push-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - push_redisdata:/data
+    networks:
+      - push-net
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: push-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - push_mqdata:/var/lib/rabbitmq
+    networks:
+      - push-net
+    restart: always
+
+  push-server:
+    build: .
+    container_name: push-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./application-prod.yml:/app/application-prod.yml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    networks:
+      - push-net
+    restart: always
+
+networks:
+  push-net:
+    driver: bridge
+
+volumes:
+  push_pgdata:
+  push_redisdata:
+  push_mqdata:

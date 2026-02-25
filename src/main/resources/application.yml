@@ -74,3 +74,8 @@ jwt:
 otp:
   expire-seconds: 300 # 5分钟过期
   dev-mode: true # true=固定123456, false=真SMS
+
+# FCM推送配置
+fcm:
+  credentials-path: classpath:firebase-service-account.json
+  enabled: true
