@@ -1,9 +1,9 @@
 package com.layababateam.pushserver.service
 
+import com.layababateam.pushserver.dto.SendMessageRequest
 import com.layababateam.pushserver.dto.ServiceItemResponse
 import com.layababateam.pushserver.dto.ServiceListResponse
 import com.layababateam.pushserver.entity.ServiceSubscription
-import com.layababateam.pushserver.repository.DeviceBindingRepository
 import com.layababateam.pushserver.repository.PublicServiceRepository
 import com.layababateam.pushserver.repository.ServiceSubscriptionRepository
 import org.slf4j.LoggerFactory
@@ -14,8 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 class SubscriptionService(
     private val serviceRepo: PublicServiceRepository,
     private val subscriptionRepo: ServiceSubscriptionRepository,
-    private val deviceRepo: DeviceBindingRepository,
-    private val fcmPushService: FcmPushService
+    private val messageService: MessageService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -75,30 +74,27 @@ class SubscriptionService(
     }
 
     /**
-     * 给用户发送订阅成功的 FCM 确认推送
+     * 给用户发送订阅成功的确认消息（入库 + FCM 推送）
      */
     private fun sendSubscriptionConfirmation(userId: Long, serviceName: String) {
         try {
-            val devices = deviceRepo.findByUserId(userId)
-            for (device in devices) {
-                val pushToken = device.pushToken
-                if (pushToken.isNullOrBlank()) continue
-
-                fcmPushService.sendPush(
-                    pushToken = pushToken,
-                    title = "订阅成功",
-                    body = "你已成功订阅「$serviceName」，后续将收到该服务的推送通知。",
-                    data = mapOf(
-                        "source" to "service",
-                        "serviceName" to serviceName,
-                        "type" to "subscription_confirm"
-                    )
+            val req = SendMessageRequest(
+                receiverId = userId,
+                title = "订阅成功",
+                content = "你已成功订阅「$serviceName」，后续将收到该服务的推送通知。",
+                group = "service_subscription",
+                msgType = "notification",
+                extraData = mapOf(
+                    "source" to "service",
+                    "serviceName" to serviceName,
+                    "type" to "subscription_confirm"
                 )
-            }
-            log.info("已向用户 {} 发送「{}」订阅确认推送", userId, serviceName)
+            )
+            messageService.sendMessage(senderId = null, req = req)
+            log.info("已向用户 {} 发送「{}」订阅确认消息", userId, serviceName)
         } catch (e: Exception) {
-            // 确认推送失败不影响订阅本身
-            log.warn("订阅确认推送失败 (user={}, service={}): {}", userId, serviceName, e.message)
+            // 确认消息失败不影响订阅本身
+            log.warn("订阅确认消息发送失败 (user={}, service={}): {}", userId, serviceName, e.message)
         }
     }
 

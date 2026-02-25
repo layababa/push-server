@@ -19,6 +19,7 @@ data class ApiResult<T>(
         const val CODE_NOT_FOUND = 404
         const val CODE_BAD_REQUEST = 400
         const val CODE_UNAUTHORIZED = 401
+        const val CODE_CONFLICT = 409
         const val CODE_INTERNAL_ERROR = 500
     }
 }

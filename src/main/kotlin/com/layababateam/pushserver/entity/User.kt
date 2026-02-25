@@ -37,6 +37,16 @@ class User(
     // nullable=true 兼容已有数据，@PrePersist 保证新用户一定有值
     @Column(name = "push_key", length = 64, unique = true)
     var pushKey: String? = null,
+
+    // 实名认证信息
+    @Column(name = "real_name", length = 50)
+    var realName: String? = null,
+
+    @Column(name = "id_card", length = 50)
+    var idCard: String? = null,
+
+    @Column(name = "real_name_verified", nullable = false)
+    var realNameVerified: Boolean = false,
     
     @Column(name = "created_at")
     var createdAt: LocalDateTime = LocalDateTime.now(),

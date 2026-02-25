@@ -6,6 +6,7 @@ import com.layababateam.pushserver.entity.User
 import com.layababateam.pushserver.repository.DeviceBindingRepository
 import com.layababateam.pushserver.repository.UserRepository
 import com.layababateam.pushserver.service.AccountDeletionService
+import com.layababateam.pushserver.service.PhoneChangeService
 import com.layababateam.pushserver.service.auth.JwtService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
@@ -22,6 +23,7 @@ class ProfileController(
     private val userRepo: UserRepository,
     private val deviceRepo: DeviceBindingRepository,
     private val accountDeletionService: AccountDeletionService,
+    private val phoneChangeService: PhoneChangeService,
     private val jwtService: JwtService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -51,7 +53,8 @@ class ProfileController(
                 phone = maskPhone(user.phone ?: ""),
                 pushKey = pushKey,
                 deviceType = latestDevice?.deviceType,
-                deviceId = latestDevice?.deviceUuid
+                deviceId = latestDevice?.deviceUuid,
+                realNameVerified = user.realNameVerified
             )
         )
     }
@@ -122,6 +125,88 @@ class ProfileController(
 
         log.info("Account deleted via API: userId={}", userId)
         return ApiResult.ok(msg = "账号已注销")
+    }
+
+    // ========================
+    // 换绑手机号
+    // ========================
+
+    /**
+     * 换绑手机号 — 发送验证码
+     * POST /api/v1/user/phone/send-otp
+     */
+    @PostMapping("/phone/send-otp")
+    fun phoneSendOtp(
+        @RequestAttribute("userId") userId: Long,
+        @Valid @RequestBody req: PhoneSendOtpRequest
+    ): ApiResult<Nothing> {
+        return try {
+            phoneChangeService.sendOtp(req.phone)
+            ApiResult.ok(msg = "验证码已发送")
+        } catch (e: IllegalArgumentException) {
+            ApiResult.fail(e.message ?: "参数错误", ApiResult.CODE_BAD_REQUEST)
+        }
+    }
+
+    /**
+     * 换绑手机号 — 执行换绑
+     * POST /api/v1/user/phone/change
+     */
+    @PostMapping("/phone/change")
+    fun changePhone(
+        @RequestAttribute("userId") userId: Long,
+        @Valid @RequestBody req: ChangePhoneRequest
+    ): ApiResult<ChangePhoneResponse> {
+        return try {
+            val maskedPhone = phoneChangeService.changePhone(
+                userId = userId,
+                currentOtp = req.currentOtp,
+                newPhone = req.newPhone,
+                newPhoneOtp = req.newPhoneOtp
+            )
+            ApiResult.ok(ChangePhoneResponse(phone = maskedPhone), "手机号换绑成功")
+        } catch (e: IllegalArgumentException) {
+            ApiResult.fail(e.message ?: "参数错误", ApiResult.CODE_BAD_REQUEST)
+        } catch (e: IllegalStateException) {
+            ApiResult.fail(e.message ?: "操作失败", ApiResult.CODE_CONFLICT)
+        }
+    }
+
+    // ========================
+    // 实名认证
+    // ========================
+
+    /**
+     * 实名认证
+     * POST /api/v1/user/realname/verify
+     */
+    @PostMapping("/realname/verify")
+    fun verifyRealName(
+        @RequestAttribute("userId") userId: Long,
+        @Valid @RequestBody req: RealNameVerifyRequest
+    ): ApiResult<Nothing> {
+        val user = userRepo.findById(userId).orElse(null)
+            ?: return ApiResult.fail("用户不存在", ApiResult.CODE_NOT_FOUND)
+
+        // 已认证不可重复
+        if (user.realNameVerified) {
+            return ApiResult.fail("已完成实名认证，不可重复认证", ApiResult.CODE_CONFLICT)
+        }
+
+        // 身份证号格式校验（18位）
+        val idCardRegex = Regex("^[1-9]\\d{5}(19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]$")
+        if (!req.idCard.matches(idCardRegex)) {
+            return ApiResult.fail("身份证号格式不正确", ApiResult.CODE_BAD_REQUEST)
+        }
+
+        // 保存实名信息
+        user.realName = req.realName.trim()
+        user.idCard = req.idCard.trim().uppercase()
+        user.realNameVerified = true
+        userRepo.save(user)
+
+        log.info("User {} completed real-name verification", userId)
+        return ApiResult.ok(msg = "实名认证成功")
     }
 
     private fun maskPhone(phone: String): String {
