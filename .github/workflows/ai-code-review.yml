@@ -10,11 +10,8 @@ name: AI Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    # 只审查 Kotlin 源代码变更
-    paths:
-      - "**/*.kt"
-      - "build.gradle"
-      - "build.gradle.kts"
+    # 不设 paths 过滤 — 确保每个 PR 都产生 status check，避免分支保护死锁
+    # Kotlin 变更检测在 job 内部完成，非 Kotlin PR 自动 pass
 
 # 同一 PR 的新 push 自动取消旧的审查
 concurrency:

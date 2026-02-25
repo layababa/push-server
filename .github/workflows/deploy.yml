@@ -28,7 +28,7 @@ jobs:
       - name: Rename JAR file
         run: mv build/libs/push-server-0.0.1-SNAPSHOT.jar build/libs/push-server.jar
 
-      - name: Deploy to Server
+      - name: Deploy JAR to Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -36,10 +36,10 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           source: "build/libs/push-server.jar"
-          target: "/opt/deploy/push-server"
+          target: "/root/push-server"
           strip_components: 2
 
-      - name: Execute remote ssh commands
+      - name: Rebuild and restart Docker container
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -47,7 +47,9 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
-            cd /opt/deploy/push-server
-            fuser -k 8080/tcp || true 
-            nohup java -jar push-server.jar --spring.config.location=/opt/deploy/push-server/application.yml > app.log 2>&1 &
+            cd /root/push-server
+            docker compose up -d --build push-server
+            echo "Waiting for container to start..."
+            sleep 5
+            docker ps --filter name=push-server --format "{{.Status}}"
             echo "Deployment successful!"
