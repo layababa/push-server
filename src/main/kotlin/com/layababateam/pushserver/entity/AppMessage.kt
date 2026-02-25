@@ -33,8 +33,15 @@ class AppMessage(
     @Column(columnDefinition = "TEXT")
     var content: String? = null,
     
+    // 点击跳转链接
+    @Column(length = 2048)
+    var url: String? = null,
+    
+    // 消息分组，客户端可按此折叠
+    @Column(name = "msg_group", length = 100)
+    var group: String? = null,
+    
     // jsonb扩展字段，放一些额外信息
-    // 比如 {"type": "order", "order_id": 123, "action": "shipped"}
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extra_data", columnDefinition = "jsonb")
     var extraData: Map<String, Any>? = null,

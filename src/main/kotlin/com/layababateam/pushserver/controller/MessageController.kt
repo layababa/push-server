@@ -2,21 +2,26 @@ package com.layababateam.pushserver.controller
 
 import com.layababateam.pushserver.dto.*
 import com.layababateam.pushserver.service.MessageService
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
+/**
+ * 消息管理 Controller — JWT 认证
+ * 路径: /api/v1/messages
+ */
 @RestController
-@RequestMapping("/api/messages")
+@RequestMapping("/api/v1/messages")
 class MessageController(
     private val msgService: MessageService
 ) {
-    // 发送消息
-    // senderId先写死，后面接jwt再从token里取
+    // 内部发送消息（管理端）
     @PostMapping
     fun sendMessage(
         @Valid @RequestBody req: SendMessageRequest,
-        @RequestHeader("X-User-Id", required = false) senderId: Long?
+        request: HttpServletRequest
     ): ApiResult<MessageResponse> {
+        val senderId = request.getAttribute("userId") as? Long
         return try {
             val msg = msgService.sendMessage(senderId, req)
             ApiResult.ok(msg, "发送成功")
@@ -25,16 +30,18 @@ class MessageController(
         }
     }
     
-    // 获取消息列表（分页）
+    // 获取消息列表（分页 + 时间过滤）
     @GetMapping
     fun getMessages(
-        @RequestHeader("X-User-Id") userId: Long,
+        request: HttpServletRequest,
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "24") hours: Int
     ): ApiResult<PageResponse<MessageResponse>> {
-        // 限制一下size，防止一次拉太多
+        val userId = request.getAttribute("userId") as? Long
+            ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
         val safeSize = minOf(size, 100)
-        val result = msgService.getMessages(userId, page, safeSize)
+        val result = msgService.getMessages(userId, page, safeSize, hours)
         return ApiResult.ok(result)
     }
     
@@ -42,8 +49,10 @@ class MessageController(
     @PostMapping("/{id}/read")
     fun markAsRead(
         @PathVariable id: Long,
-        @RequestHeader("X-User-Id") userId: Long
+        request: HttpServletRequest
     ): ApiResult<Boolean> {
+        val userId = request.getAttribute("userId") as? Long
+            ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
         val success = msgService.markAsRead(id, userId)
         return if (success) {
             ApiResult.ok(true, "已标记为已读")
@@ -54,14 +63,18 @@ class MessageController(
     
     // 全部标记已读
     @PostMapping("/read-all")
-    fun markAllAsRead(@RequestHeader("X-User-Id") userId: Long): ApiResult<Int> {
+    fun markAllAsRead(request: HttpServletRequest): ApiResult<Int> {
+        val userId = request.getAttribute("userId") as? Long
+            ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
         val count = msgService.markAllAsRead(userId)
         return ApiResult.ok(count, "已标记${count}条为已读")
     }
     
     // 获取未读数
     @GetMapping("/unread-count")
-    fun getUnreadCount(@RequestHeader("X-User-Id") userId: Long): ApiResult<Long> {
+    fun getUnreadCount(request: HttpServletRequest): ApiResult<Long> {
+        val userId = request.getAttribute("userId") as? Long
+            ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
         val count = msgService.getUnreadCount(userId)
         return ApiResult.ok(count)
     }

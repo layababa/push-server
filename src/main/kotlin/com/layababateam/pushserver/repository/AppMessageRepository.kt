@@ -8,12 +8,26 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDateTime
 
 @Repository
 interface AppMessageRepository : JpaRepository<AppMessage, Long> {
     
     // 分页查用户消息，按时间倒序
     fun findByReceiverIdOrderByCreatedAtDesc(receiverId: Long, pageable: Pageable): Page<AppMessage>
+    
+    // 分页查用户消息，带时间过滤（hours 参数）
+    @Query("""
+        SELECT m FROM AppMessage m 
+        WHERE m.receiverId = :receiverId 
+          AND m.createdAt >= :since 
+        ORDER BY m.createdAt DESC
+    """)
+    fun findByReceiverIdAndCreatedAtAfter(
+        @Param("receiverId") receiverId: Long,
+        @Param("since") since: LocalDateTime,
+        pageable: Pageable
+    ): Page<AppMessage>
     
     // 查未读消息数
     fun countByReceiverIdAndReadStatus(receiverId: Long, readStatus: Int): Long
