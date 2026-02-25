@@ -123,6 +123,16 @@ class MessageService(
         return msgRepo.countByReceiverIdAndReadStatus(userId, 0)
     }
     
+    /**
+     * 清空用户所有消息（物理删除）
+     */
+    @Transactional
+    fun clearMessages(userId: Long): Int {
+        val count = msgRepo.deleteByReceiverId(userId)
+        log.info("user {} cleared {} messages", userId, count)
+        return count
+    }
+    
     // 更新推送状态，consumer调用
     @Transactional
     fun updatePushStatus(msgId: Long, status: Int) {
