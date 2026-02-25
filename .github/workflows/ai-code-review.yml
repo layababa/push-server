@@ -1,0 +1,98 @@
+# ──────────────────────────────────────────────────────────
+# PushApp AI 审查工作流 — Server
+# AI 利用指定 prompt 独立审查 PR
+# P0/P1 → FAIL 阻止合并
+# P2/P3 → PASS 但自动记录到 docs/modules/<module>/improvements.md
+# ──────────────────────────────────────────────────────────
+
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # 只审查 Kotlin 源代码变更
+    paths:
+      - "**/*.kt"
+      - "build.gradle"
+      - "build.gradle.kts"
+
+# 同一 PR 的新 push 自动取消旧的审查
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # push_docs 仓库信息
+  DOCS_REPO: ${{ github.repository_owner }}/push_docs
+  DOCS_REF: main
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job: AI Code Review
+  # 负责直接审查 PR 并在 PR 评论中反馈，同时将 P2/P3 问题写入 improvements.md
+  # ─────────────────────────────────────────────
+  ai-reviewer:
+    name: "🤖 AI Code Review"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Checkout 当前仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout push_docs (审查 prompt + 脚本 + 写入 improvements)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DOCS_REPO }}
+          ref: ${{ env.DOCS_REF }}
+          token: ${{ secrets.DOOR_REPO_READ_TOKEN }}
+          path: _docs
+
+      - name: 提取 PR Diff (仅 Kotlin 代码文件)
+        run: |
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD \
+            -- '*.kt' > diff.txt
+          echo "Diff size: $(wc -c < diff.txt) bytes"
+          if [ ! -s diff.txt ]; then
+            echo "skip=true" >> $GITHUB_ENV
+          fi
+
+      - name: 安装 Python 依赖
+        if: env.skip != 'true'
+        run: pip install -r _docs/ci/scripts/requirements.txt
+
+      - name: 执行 AI 审查 (含 improvements.md 写入)
+        if: env.skip != 'true'
+        env:
+          AI_CODE_WITH_KEY: ${{ secrets.AI_CODE_WITH_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python _docs/ci/scripts/ai_review.py \
+            --prompt _docs/ci/review-prompts/server-review-prompt.md \
+            --diff diff.txt \
+            --reviewer-name "PushApp AI 审查员" \
+            --temperature 0.2 \
+            --docs-dir _docs \
+            --commit "${{ github.event.pull_request.head.sha }}" \
+            --author "${{ github.event.pull_request.user.login }}"
+
+      # P2/P3 问题写入 improvements.md 后，自动提交回 push_docs
+      - name: 提交 improvements.md 到 push_docs
+        if: env.skip != 'true'
+        run: |
+          cd _docs
+          if git diff --quiet; then
+            echo "[INFO] 无 P2/P3 问题，无需提交"
+          else
+            git config user.name "AI Code Review Bot"
+            git config user.email "ai-review-bot@pushapp.dev"
+            git add modules/*/improvements.md
+            git commit -m "docs: AI 审查记录 P2/P3 改进建议 (PR #${{ github.event.pull_request.number }})"
+            git push
+            echo "[OK] improvements.md 已提交到 push_docs"
+          fi
