@@ -41,6 +41,13 @@ spring:
         acknowledge-mode: manual
         prefetch: 10
 
+  # redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000ms
+
 # 自定义mq配置
 mq:
   exchange:
@@ -57,3 +64,13 @@ logging:
   level:
     com.layababateam.pushserver: DEBUG
     org.springframework.amqp: DEBUG
+
+# JWT配置
+jwt:
+  secret: push-app-dev-secret-key-must-be-at-least-256-bits-long-for-hs256
+  expiration: 604800000 # 7天
+
+# OTP配置
+otp:
+  expire-seconds: 300 # 5分钟过期
+  dev-mode: true # true=固定123456, false=真SMS
