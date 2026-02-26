@@ -85,6 +85,10 @@ class MessageController(
         val userId = request.getAttribute("userId") as? Long
             ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
         val count = msgService.clearMessages(userId)
-        return ApiResult.ok(count, "已清空${count}条消息")
+        return if (count >= 0) {
+            ApiResult.ok(count, "已清空${count}条消息")
+        } else {
+            ApiResult.fail("清空消息失败，请稍后重试")
+        }
     }
 }
