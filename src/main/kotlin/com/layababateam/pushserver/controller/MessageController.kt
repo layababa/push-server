@@ -84,7 +84,11 @@ class MessageController(
     fun clearMessages(request: HttpServletRequest): ApiResult<Int> {
         val userId = request.getAttribute("userId") as? Long
             ?: return ApiResult.fail("未登录", ApiResult.CODE_UNAUTHORIZED)
-        val count = msgService.clearMessages(userId)
-        return ApiResult.ok(count, "已清空${count}条消息")
+        return try {
+            val count = msgService.clearMessages(userId)
+            ApiResult.ok(count, "已清空${count}条消息")
+        } catch (e: Exception) {
+            ApiResult.fail("清空失败: ${e.message}")
+        }
     }
 }

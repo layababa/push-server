@@ -3,19 +3,23 @@ package com.layababateam.pushserver.service.auth
 import com.layababateam.pushserver.dto.AuthLoginRequest
 import com.layababateam.pushserver.dto.AuthLoginResponse
 import com.layababateam.pushserver.dto.AuthUserItem
+import com.layababateam.pushserver.entity.DeviceBinding
 import com.layababateam.pushserver.entity.User
+import com.layababateam.pushserver.repository.DeviceBindingRepository
 import com.layababateam.pushserver.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 /**
  * Auth 业务服务
- * 职责：OTP 登录、登出、单设备互斥
+ * 职责：OTP 登录、登出、单设备互斥、设备绑定
  */
 @Service
 class AuthService(
     private val userRepo: UserRepository,
+    private val deviceRepo: DeviceBindingRepository,
     private val otpService: OtpService,
     private val jwtService: JwtService
 ) {
@@ -33,8 +37,9 @@ class AuthService(
      * OTP 登录
      * 1. 校验验证码
      * 2. 查找或创建用户
-     * 3. 踢旧设备（JWT 单设备互斥由 JwtService 处理）
-     * 4. 生成新 Token
+     * 3. 绑定设备（创建/更新 device_binding 记录）
+     * 4. 踢旧设备（JWT 单设备互斥由 JwtService 处理）
+     * 5. 生成新 Token
      */
     @Transactional
     fun login(req: AuthLoginRequest): AuthLoginResponse {
@@ -53,18 +58,46 @@ class AuthService(
             }
         }
 
-        // 3. 生成 Token（JwtService 内部处理单设备互斥）
-        val token = jwtService.generateToken(user.id!!, req.deviceId)
+        val userId = user.id!!
 
-        log.info("User login: id={}, device={}", user.id, req.deviceId)
+        // 3. 绑定设备（确保 FCM 推送能找到此用户的设备）
+        bindDevice(userId, req.deviceId)
+
+        // 4. 生成 Token（JwtService 内部处理单设备互斥）
+        val token = jwtService.generateToken(userId, req.deviceId)
+
+        log.info("User login: id={}, device={}", userId, req.deviceId)
 
         return AuthLoginResponse(
             token = token,
             user = AuthUserItem(
-                uid = user.id!!,
+                uid = userId,
                 phone = maskPhone(user.phone ?: "")
             )
         )
+    }
+
+    /**
+     * 绑定/更新设备信息
+     * 按 deviceUuid 做 upsert：存在则更新 userId，不存在则新建
+     */
+    private fun bindDevice(userId: Long, deviceUuid: String) {
+        val existing = deviceRepo.findByDeviceUuid(deviceUuid)
+
+        if (existing.isPresent) {
+            val device = existing.get()
+            device.userId = userId
+            device.lastActive = LocalDateTime.now()
+            deviceRepo.save(device)
+            log.debug("Device binding updated: userId={}, uuid={}", userId, deviceUuid)
+        } else {
+            val device = DeviceBinding(
+                deviceUuid = deviceUuid,
+                userId = userId
+            )
+            deviceRepo.save(device)
+            log.info("Device binding created: userId={}, uuid={}", userId, deviceUuid)
+        }
     }
 
     /**
