@@ -125,12 +125,18 @@ class MessageService(
     
     /**
      * 清空用户所有消息（物理删除）
+     * @return 被删除的消息数量，失败时返回 -1
      */
     @Transactional
     fun clearMessages(userId: Long): Int {
-        val count = msgRepo.deleteByReceiverId(userId)
-        log.info("user {} cleared {} messages", userId, count)
-        return count
+        return try {
+            val count = msgRepo.deleteByReceiverId(userId)
+            log.info("user {} cleared {} messages", userId, count)
+            count
+        } catch (e: Exception) {
+            log.error("clear messages failed, userId={}", userId, e)
+            -1
+        }
     }
     
     // 更新推送状态，consumer调用
