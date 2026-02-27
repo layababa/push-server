@@ -73,7 +73,19 @@ jwt:
 # OTP配置
 otp:
   expire-seconds: 300 # 5分钟过期
-  dev-mode: true # true=固定123456, false=真SMS
+  dev-mode: false # true=固定123456, false=真SMS
+  cooldown-seconds: 60 # 同一手机号发送冷却时间
+  daily-limit: 10 # 同一手机号每日发送上限
+
+# 阿里云短信配置（otp.dev-mode=false 时生效）
+sms:
+  aliyun:
+    access-key-id: LTAI5tLXGrz7rPEtCdHqUk6v
+    access-key-secret: 563qLfZza1xYzLGaOfdC92B2YnfwhZ
+    region: cn-hangzhou
+    endpoint: dysmsapi.aliyuncs.com
+    sign-name: 长沙靖荣环保科技
+    template-code: "SMS_332115869"
 
 # FCM推送配置
 fcm:
