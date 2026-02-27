@@ -50,6 +50,9 @@ dependencies {
     // jackson for jsonb
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     
+    // 阿里云短信服务 SMS SDK
+    implementation("com.aliyun:alibabacloud-dysmsapi20170525:4.0.9")
+    
     // firebase admin sdk (FCM推送)
     implementation("com.google.firebase:firebase-admin:9.4.3")
     

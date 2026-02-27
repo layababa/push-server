@@ -3,7 +3,9 @@ package com.layababateam.pushserver.service.auth
 import com.layababateam.pushserver.dto.AuthLoginRequest
 import com.layababateam.pushserver.dto.AuthLoginResponse
 import com.layababateam.pushserver.dto.AuthUserItem
+import com.layababateam.pushserver.entity.DeviceBinding
 import com.layababateam.pushserver.entity.User
+import com.layababateam.pushserver.repository.DeviceBindingRepository
 import com.layababateam.pushserver.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -11,11 +13,12 @@ import org.springframework.transaction.annotation.Transactional
 
 /**
  * Auth 业务服务
- * 职责：OTP 登录、登出、单设备互斥
+ * 职责：OTP 登录、登出、单设备互斥、设备绑定
  */
 @Service
 class AuthService(
     private val userRepo: UserRepository,
+    private val deviceBindingRepo: DeviceBindingRepository,
     private val otpService: OtpService,
     private val jwtService: JwtService
 ) {
@@ -53,7 +56,10 @@ class AuthService(
             }
         }
 
-        // 3. 生成 Token（JwtService 内部处理单设备互斥）
+        // 3. 绑定设备（upsert by deviceUuid）
+        bindDevice(user.id!!, req.deviceId)
+
+        // 4. 生成 Token（JwtService 内部处理单设备互斥）
         val token = jwtService.generateToken(user.id!!, req.deviceId)
 
         log.info("User login: id={}, device={}", user.id, req.deviceId)
@@ -73,6 +79,29 @@ class AuthService(
     fun logout(userId: Long) {
         jwtService.invalidateToken(userId)
         log.info("User logout: id={}", userId)
+    }
+
+    /**
+     * 设备绑定 upsert：按 deviceUuid 查找，存在则更新 userId，不存在则新建。
+     * 登录时 push_token 尚未获取，后续由 Flutter 端调用 /api/v1/user/bind-device 补充。
+     */
+    private fun bindDevice(userId: Long, deviceUuid: String) {
+        val existing = deviceBindingRepo.findByDeviceUuid(deviceUuid)
+        if (existing.isPresent) {
+            val binding = existing.get()
+            binding.userId = userId
+            binding.lastActive = java.time.LocalDateTime.now()
+            deviceBindingRepo.save(binding)
+            log.info("Device binding updated: userId={}, deviceUuid={}", userId, deviceUuid)
+        } else {
+            val binding = DeviceBinding(
+                deviceUuid = deviceUuid,
+                userId = userId,
+                deviceType = "android"
+            )
+            deviceBindingRepo.save(binding)
+            log.info("Device binding created: userId={}, deviceUuid={}", userId, deviceUuid)
+        }
     }
 
     /**
