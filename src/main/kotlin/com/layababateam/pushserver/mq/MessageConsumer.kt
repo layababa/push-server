@@ -2,8 +2,8 @@ package com.layababateam.pushserver.mq
 
 import com.layababateam.pushserver.dto.PushMessagePayload
 import com.layababateam.pushserver.repository.DeviceBindingRepository
-import com.layababateam.pushserver.service.FcmPushService
 import com.layababateam.pushserver.service.MessageService
+import com.layababateam.pushserver.service.push.PushChannelRouter
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.annotation.RabbitListener
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
 @Component
 class MessageConsumer(
     private val msgService: MessageService,
-    private val fcmPushService: FcmPushService,
+    private val pushChannelRouter: PushChannelRouter,
     private val deviceRepo: DeviceBindingRepository
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -34,9 +34,11 @@ class MessageConsumer(
                 val pushToken = binding?.pushToken
                 
                 if (pushToken.isNullOrBlank()) {
-                    log.warn("设备 {} 无 pushToken，跳过 FCM 推送", uuid)
+                    log.warn("设备 {} 无 pushToken，跳过推送", uuid)
                     continue
                 }
+                
+                val pushChannel = binding.pushChannel
                 
                 // 构建额外数据
                 val data = mutableMapOf(
@@ -45,13 +47,20 @@ class MessageConsumer(
                 )
                 payload.extraData?.forEach { (k, v) -> data[k] = v.toString() }
                 
-                // 通过 FCM 发送真实推送
-                fcmPushService.sendPush(
+                // 通过 PushChannelRouter 路由到对应厂商通道发送推送
+                val success = pushChannelRouter.send(
+                    pushChannel = pushChannel,
                     pushToken = pushToken,
                     title = payload.title,
                     body = payload.content,
                     data = data
                 )
+                
+                if (success) {
+                    log.debug("推送成功: device={}, channel={}", uuid, pushChannel)
+                } else {
+                    log.warn("推送失败: device={}, channel={}", uuid, pushChannel)
+                }
             }
             
             // 更新推送状态为已发送

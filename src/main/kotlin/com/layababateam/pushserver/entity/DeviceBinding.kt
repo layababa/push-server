@@ -26,9 +26,13 @@ class DeviceBinding(
     @Column(name = "device_type", length = 20)
     var deviceType: String? = null,
     
-    // 推送token，以后接fcm/apns用
-    @Column(name = "push_token", length = 255)
+    // 推送 token（FCM registration token 或廠商 token）
+    @Column(name = "push_token", length = 512)
     var pushToken: String? = null,
+
+    // 推送通道標識：fcm / huawei / xiaomi / oppo / vivo / honor / apns
+    @Column(name = "push_channel", length = 20)
+    var pushChannel: String = "fcm",
     
     @Column(name = "last_login_ip", length = 50)
     var lastLoginIp: String? = null,

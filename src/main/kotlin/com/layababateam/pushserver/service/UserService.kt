@@ -86,6 +86,7 @@ class UserService(
             device.lastActive = LocalDateTime.now()
             device.pushToken = req.pushToken ?: device.pushToken
             device.deviceType = req.deviceType ?: device.deviceType
+            device.pushChannel = req.pushChannel
             deviceRepo.save(device)
         } else {
             // 新设备
@@ -94,6 +95,7 @@ class UserService(
                 userId = userId,
                 deviceType = req.deviceType,
                 pushToken = req.pushToken,
+                pushChannel = req.pushChannel,
                 lastLoginIp = clientIp
             )
             deviceRepo.save(device)

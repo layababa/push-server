@@ -30,7 +30,8 @@ data class LoginRequest(
     val deviceUuid: String,
     
     val deviceType: String? = null,
-    val pushToken: String? = null
+    val pushToken: String? = null,
+    val pushChannel: String = "fcm"
 )
 
 // 用户响应

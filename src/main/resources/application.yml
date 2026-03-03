@@ -91,3 +91,34 @@ sms:
 fcm:
   credentials-path: classpath:firebase-service-account.json
   enabled: true
+
+# 多厂商推送通道配置
+push:
+  # 小米 MiPush
+  xiaomi:
+    enabled: false
+    app-secret: ""
+    package-name: "com.layababateam.pushapp"
+  # 华为 HMS Push
+  huawei:
+    enabled: false
+    app-id: ""
+    client-id: ""
+    client-secret: ""
+  # OPPO Push
+  oppo:
+    enabled: false
+    app-key: ""
+    master-secret: ""
+  # VIVO Push
+  vivo:
+    enabled: false
+    app-id: ""
+    app-key: ""
+    app-secret: ""
+  # 荣耀 Honor Push
+  honor:
+    enabled: false
+    app-id: ""
+    client-id: ""
+    client-secret: ""
