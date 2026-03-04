@@ -96,9 +96,9 @@ fcm:
 push:
   # 小米 MiPush
   xiaomi:
-    enabled: false
-    app-secret: ""
-    package-name: "com.layababateam.pushapp"
+    enabled: true
+    app-secret: "VaKb4FUNEn6LJIcaue60hA=="
+    package-name: "com.layababa.push.app"
   # 华为 HMS Push
   huawei:
     enabled: false
@@ -112,10 +112,10 @@ push:
     master-secret: ""
   # VIVO Push
   vivo:
-    enabled: false
-    app-id: ""
-    app-key: ""
-    app-secret: ""
+    enabled: true
+    app-id: "106042910"
+    app-key: "0cd88a524a6c51f8a8abe36cffe59c53"
+    app-secret: "f59e623e-aef2-47b4-9304-7f8463d74c61"
   # 荣耀 Honor Push
   honor:
     enabled: false
