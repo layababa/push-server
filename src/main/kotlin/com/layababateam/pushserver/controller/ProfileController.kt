@@ -92,6 +92,7 @@ class ProfileController(
             device.userId = userId
             device.deviceType = req.deviceType
             device.pushToken = req.pushToken ?: device.pushToken
+            device.pushChannel = req.pushChannel
             device.lastActive = LocalDateTime.now()
             deviceRepo.save(device)
         } else {
@@ -99,7 +100,8 @@ class ProfileController(
                 deviceUuid = req.deviceId,
                 userId = userId,
                 deviceType = req.deviceType,
-                pushToken = req.pushToken
+                pushToken = req.pushToken,
+                pushChannel = req.pushChannel
             )
             deviceRepo.save(device)
         }

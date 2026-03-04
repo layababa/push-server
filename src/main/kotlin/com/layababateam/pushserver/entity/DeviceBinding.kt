@@ -32,7 +32,7 @@ class DeviceBinding(
 
     // 推送通道標識：fcm / huawei / xiaomi / oppo / vivo / honor / apns
     @Column(name = "push_channel", length = 20)
-    var pushChannel: String = "fcm",
+    var pushChannel: String? = "fcm",
     
     @Column(name = "last_login_ip", length = 50)
     var lastLoginIp: String? = null,

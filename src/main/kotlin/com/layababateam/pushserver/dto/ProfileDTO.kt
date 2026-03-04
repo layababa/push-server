@@ -22,7 +22,8 @@ data class DeviceBindRequest(
     @field:NotBlank(message = "设备ID不能为空")
     val deviceId: String,
 
-    val pushToken: String? = null  // 厂商推送 Token（可选）
+    val pushToken: String? = null,
+    val pushChannel: String = "fcm"
 )
 
 // 重置 pushKey 响应

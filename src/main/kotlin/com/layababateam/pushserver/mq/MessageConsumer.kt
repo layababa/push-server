@@ -38,7 +38,7 @@ class MessageConsumer(
                     continue
                 }
                 
-                val pushChannel = binding.pushChannel
+                val pushChannel = binding.pushChannel?.ifBlank { "fcm" } ?: "fcm"
                 
                 // 构建额外数据
                 val data = mutableMapOf(
